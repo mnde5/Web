@@ -1,0 +1,1 @@
+export const DEFAULT_PRICE_PER_CREDIT = 180000;
