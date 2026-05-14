@@ -129,6 +129,25 @@ Payments:
 | GET | `/bs/lms/v1/schools/:schoolId/users/:userId/debt` | Оюутны өрийн дүн авах |
 | GET | `/bs/lms/v1/schools/:schoolId/payment-debt-report` | Сургуулийн төлбөрийн тайлан авах |
 
+Exams:
+
+Frontend дээр шалгалтын route болон `examAPI` service scaffold хэлбэрээр бэлэн байгаа. Доорх нь багш шалгалт үүсгэх, сурагч шалгалт өгөх үед ашиглах API замчлалын жишээ юм.
+
+| Method | Path | Тайлбар |
+| --- | --- | --- |
+| GET | `/bs/lms/v1/exams` | Нийт шалгалтын жагсаалт авах |
+| GET | `/bs/lms/v1/courses/:courseId/exams` | Тухайн хичээлийн шалгалтууд авах |
+| POST | `/bs/lms/v1/courses/:courseId/exams` | Багш шинэ шалгалт үүсгэх |
+| GET | `/bs/lms/v1/exams/:examId` | Шалгалтын дэлгэрэнгүй мэдээлэл авах |
+| PUT | `/bs/lms/v1/exams/:examId` | Шалгалтын мэдээлэл засах |
+| DELETE | `/bs/lms/v1/exams/:examId` | Шалгалт устгах |
+| GET | `/bs/lms/v1/exams/:examId/variants` | Шалгалтын вариантууд авах |
+| POST | `/bs/lms/v1/exams/:examId/variants` | Шалгалтын вариант үүсгэх |
+| GET | `/bs/lms/v1/exams/:examId/questions` | Шалгалтын асуултууд авах |
+| POST | `/bs/lms/v1/exams/:examId/questions` | Шалгалтад асуулт нэмэх |
+| PUT | `/bs/lms/v1/exams/:examId/questions/:qId` | Шалгалтын асуулт засах |
+| DELETE | `/bs/lms/v1/exams/:examId/questions/:qId` | Шалгалтын асуулт устгах |
+
 Payment үүсгэх body жишээ:
 
 ```json
@@ -141,6 +160,96 @@ Payment үүсгэх body жишээ:
   "course_count": 1,
   "credits": 3,
   "course_ids": ["course-101"]
+}
+```
+
+## Багш шалгалт үүсгэх хэсэг
+
+Frontend route:
+
+| Route | Хэрэглээ |
+| --- | --- |
+| `/courses/:course_id/exams` | Хичээлийн шалгалтын жагсаалт |
+| `/courses/:course_id/exams/create` | Багш шинэ шалгалт үүсгэх |
+| `/exams/:exam_id` | Шалгалтын дэлгэрэнгүй |
+| `/exams/:exam_id/edit` | Шалгалтын мэдээлэл засах |
+| `/exams/:exam_id/variants` | Шалгалтын вариантын жагсаалт |
+| `/exams/:exam_id/variants/create` | Шалгалтын вариант нэмэх |
+| `/exams/:exam_id/report` | Шалгалтын тайлан, статистик харах |
+
+Багш шалгалт үүсгэх API жишээ:
+
+```bash
+curl -X POST http://localhost:3000/bs/lms/v1/courses/course-101/exams \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Явцын шалгалт 1",
+    "description": "React үндсэн ойлголтын шалгалт",
+    "duration": 60,
+    "total_point": 100,
+    "starts_on": "2026-05-15T09:00:00.000Z",
+    "ends_on": "2026-05-15T12:00:00.000Z",
+    "status": "published",
+    "current_user": "teacher-1"
+  }'
+```
+
+Шалгалтад асуулт нэмэх API жишээ:
+
+```bash
+curl -X POST http://localhost:3000/bs/lms/v1/exams/exam-101/questions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "React component гэж юу вэ?",
+    "type": "single_choice",
+    "point": 5,
+    "answers": [
+      { "text": "UI-ийн дахин ашиглагдах хэсэг", "is_correct": true },
+      { "text": "Database table", "is_correct": false },
+      { "text": "HTTP method", "is_correct": false }
+    ]
+  }'
+```
+
+## Сурагч шалгалт өгөх хэсэг
+
+Frontend route:
+
+| Route | Хэрэглээ |
+| --- | --- |
+| `/exams/:exam_id/students/:student_id` | Сурагч шалгалт эхлүүлэх |
+| `/exams/:exam_id/students/:student_id/edit` | Шалгалт үргэлжлүүлэх, хариулт засах |
+| `/exams/:exam_id/students/:student_id/check` | Зөв хариулт харах |
+| `/exams/:exam_id/students/:student_id/result` | Шалгалтын үр дүн харах |
+
+Сурагч шалгалтын мэдээлэл авах API жишээ:
+
+```bash
+curl http://localhost:3000/bs/lms/v1/exams/exam-101
+```
+
+Сурагч шалгалтын асуултууд авах API жишээ:
+
+```bash
+curl http://localhost:3000/bs/lms/v1/exams/exam-101/questions
+```
+
+Сурагч шалгалтын хариулт илгээх payload жишээ:
+
+```json
+{
+  "exam_id": "exam-101",
+  "student_id": "student-1",
+  "variant_id": "variant-a",
+  "started_on": "2026-05-15T09:05:00.000Z",
+  "submitted_on": "2026-05-15T09:45:00.000Z",
+  "answers": [
+    {
+      "question_id": "question-1",
+      "answer_id": "answer-1",
+      "answer_text": "UI-ийн дахин ашиглагдах хэсэг"
+    }
+  ]
 }
 ```
 
