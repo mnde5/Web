@@ -12,6 +12,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ── Health check ────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'lms-backend',
+    health: '/health',
+    apiBase: '/bs/lms/v1',
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'lms-backend', timestamp: new Date().toISOString() });
 });
