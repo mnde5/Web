@@ -18,11 +18,16 @@ function normalizeCourseIds(value) {
 }
 
 function buildPaymentPayload(params, body = {}) {
+  const receiptImageUrl = body.receipt_image_url || body.receipt_image_data || '';
   return {
     school_id: String(params.schoolId),
     user_id: String(params.userId),
     amount: Number(body.amount) || 0,
     bank_receipt: body.bank_receipt || '',
+    receipt_image_url: receiptImageUrl,
+    receipt_file_name: body.receipt_file_name || '',
+    receipt_file_type: body.receipt_file_type || '',
+    receipt_uploaded_on: receiptImageUrl ? new Date() : null,
     payment_date: body.payment_date || new Date(),
     payment_type: body.payment_type || body.requested_payment_method || 'bank_transfer',
     requested_payment_method: body.requested_payment_method || '',
@@ -43,6 +48,14 @@ function getVerifiedFilter() {
       { verified_by: { $nin: ['', null] } },
     ],
   };
+}
+
+function isVerifiedPayment(payment) {
+  return payment.status === 'verified' || Boolean(payment.verified_on || payment.verified_by);
+}
+
+function isPendingPayment(payment) {
+  return payment.status === 'pending' && !isVerifiedPayment(payment);
 }
 
 router.get('/schools/:schoolId/users/:userId/payments', async (req, res) => {
@@ -91,6 +104,40 @@ router.post('/schools/:schoolId/users/:userId/payments/:payId/verify', async (re
     payment.status = 'verified';
     payment.verified_by = req.body.current_user || req.body.verified_by || '';
     payment.verified_on = new Date();
+    payment.rejected_by = '';
+    payment.rejected_on = null;
+    payment.rejected_reason = '';
+    await payment.save();
+
+    return res.json({ success: true, item: payment });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/schools/:schoolId/users/:userId/payments/:payId/reject', async (req, res) => {
+  try {
+    const { schoolId, userId, payId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(payId)) {
+      return res.status(400).json({ success: false, message: 'Буруу payment ID формат' });
+    }
+
+    const payment = await Payment.findOne({
+      _id: payId,
+      school_id: String(schoolId),
+      user_id: String(userId),
+    });
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Төлбөр олдсонгүй' });
+    }
+
+    payment.status = 'rejected';
+    payment.rejected_by = req.body.current_user || req.body.rejected_by || '';
+    payment.rejected_on = new Date();
+    payment.rejected_reason = req.body.reason || req.body.rejected_reason || 'Төлбөрийн баримт баталгаажаагүй.';
+    payment.verified_by = '';
+    payment.verified_on = null;
     await payment.save();
 
     return res.json({ success: true, item: payment });
@@ -125,7 +172,7 @@ router.get('/schools/:schoolId/payment-debt-report', async (req, res) => {
       });
 
       if (verified) current.paid_amount += Number(payment.amount) || 0;
-      else current.pending_payment_amount += Number(payment.amount) || 0;
+      else if (isPendingPayment(payment)) current.pending_payment_amount += Number(payment.amount) || 0;
 
       if (!current.last_payment_date || new Date(payment.createdAt) > new Date(current.last_payment_date)) {
         current.last_payment_amount = payment.amount;
@@ -148,7 +195,7 @@ router.get('/schools/:schoolId/users/:userId/debt', async (req, res) => {
     const pending = await Payment.find({
       school_id: String(req.params.schoolId),
       user_id: String(req.params.userId),
-      status: { $ne: 'verified' },
+      status: 'pending',
       verified_on: null,
     });
     const debtAmount = pending.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);

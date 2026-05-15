@@ -11,6 +11,12 @@ function fmt(n) {
 }
 
 function StatusBadge({ item }) {
+  if (item?.status === 'rejected') {
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">Татгалзсан</span>;
+  }
+  if (item?.status === 'cancelled') {
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Цуцалсан</span>;
+  }
   const verified = isPaymentVerified(item);
   if (verified)
     return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Баталгаажсан</span>;
@@ -20,6 +26,21 @@ function StatusBadge({ item }) {
 function isPaymentVerified(payment) {
   return payment?.status === 'verified' || Boolean(payment?.verified_on || payment?.verified_by);
 }
+
+function isPaymentPending(payment) {
+  return payment?.status !== 'rejected' && payment?.status !== 'cancelled' && !isPaymentVerified(payment);
+}
+
+function getReceiptUrl(payment) {
+  return payment?.receipt_image_url || payment?.receipt_image_data || '';
+}
+
+const PAYMENT_TYPES = [
+  { value: 'bank_transfer', label: 'Банкны шилжүүлэг' },
+  { value: 'cash', label: 'Бэлэн мөнгө' },
+  { value: 'card', label: 'Карт' },
+  { value: 'qpay', label: 'QPay' },
+];
 
 async function resolveSchoolIds(user) {
   const ids = new Set(getSchoolIds(user));
@@ -62,10 +83,44 @@ export default function PaymentsPage() {
   const role = useTeam2Role();
   const [payments, setPayments] = useState([]);
   const [debt, setDebt]         = useState(null);
+  const [schoolIds, setSchoolIds] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [saveErr, setSaveErr]   = useState('');
+  const [form, setForm] = useState({
+    amount: '',
+    bank_receipt: '',
+    payment_date: new Date().toISOString().slice(0, 10),
+    payment_type: 'bank_transfer',
+  });
 
   const userId = user?.id;
+
+  const loadPaymentsForSchools = async (ids) => {
+    const results = await Promise.all(ids.map(async (schoolId) => {
+      const [paymentPayload, debtPayload] = await Promise.all([
+        paymentAPI.getByStudent(schoolId, userId),
+        debtAPI.get(schoolId, userId).catch(() => null),
+      ]);
+
+      return {
+        schoolId,
+        payments: extractItems(paymentPayload).map((payment) => normalizePayment(payment, schoolId)),
+        debt: debtPayload,
+      };
+    }));
+
+    const mergedPayments = results
+      .flatMap((result) => result.payments)
+      .sort((a, b) => String(paymentSortValue(b)).localeCompare(String(paymentSortValue(a))));
+    const mergedDebtAmount = results.reduce((sum, result) => (
+      sum + (Number(result.debt?.debt_amount) || 0)
+    ), 0);
+
+    setPayments(mergedPayments);
+    setDebt({ debt_amount: mergedDebtAmount });
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -82,30 +137,9 @@ export default function PaymentsPage() {
       }
 
       try {
-        const results = await Promise.all(schoolIds.map(async (schoolId) => {
-          const [paymentPayload, debtPayload] = await Promise.all([
-            paymentAPI.getByStudent(schoolId, userId),
-            debtAPI.get(schoolId, userId).catch(() => null),
-          ]);
-
-          return {
-            schoolId,
-            payments: extractItems(paymentPayload).map((payment) => normalizePayment(payment, schoolId)),
-            debt: debtPayload,
-          };
-        }));
-
         if (!active) return;
-
-        const mergedPayments = results
-          .flatMap((result) => result.payments)
-          .sort((a, b) => String(paymentSortValue(b)).localeCompare(String(paymentSortValue(a))));
-        const mergedDebtAmount = results.reduce((sum, result) => (
-          sum + (Number(result.debt?.debt_amount) || 0)
-        ), 0);
-
-        setPayments(mergedPayments);
-        setDebt({ debt_amount: mergedDebtAmount });
+        setSchoolIds(schoolIds);
+        await loadPaymentsForSchools(schoolIds);
       } catch (e) {
         if (!active) return;
         setError(getErrorMessage(e, 'Төлбөрийн мэдээлэл ачааллаж чадсангүй.'));
@@ -117,12 +151,36 @@ export default function PaymentsPage() {
     return () => { active = false; };
   }, [user, userId]);
 
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!schoolIds.length) { setSaveErr('Сургуулийн мэдээлэл олдсонгүй.'); return; }
+    if (!form.amount) { setSaveErr('Дүнгээ оруулна уу.'); return; }
+    if (!form.bank_receipt.trim()) { setSaveErr('Гүйлгээний дугаар оруулна уу.'); return; }
+    setSaving(true);
+    setSaveErr('');
+    try {
+      await paymentAPI.create(schoolIds[0], userId, {
+        amount: Number(form.amount),
+        bank_receipt: form.bank_receipt,
+        payment_date: form.payment_date,
+        payment_type: form.payment_type,
+        status: 'pending',
+      });
+      setForm((current) => ({ ...current, amount: '', bank_receipt: '' }));
+      await loadPaymentsForSchools(schoolIds);
+    } catch (e) {
+      setSaveErr(getErrorMessage(e, 'Төлбөрийн хүсэлт илгээж чадсангүй.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const totalPaid = payments
     .filter(isPaymentVerified)
     .reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
   const totalPending = payments
-    .filter(p => !isPaymentVerified(p))
+    .filter(isPaymentPending)
     .reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
   const debtAmount = Math.max(Number(debt?.debt_amount ?? 0), totalPending);
@@ -184,6 +242,47 @@ export default function PaymentsPage() {
 
       {error && <div className="bg-red-50 text-red-600 text-sm rounded-xl px-5 py-3 mb-5">{error}</div>}
 
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+        <h3 className="font-semibold text-gray-900 mb-4">Төлбөрийн хүсэлт илгээх</h3>
+        <form onSubmit={handleAdd} className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_1fr_160px]">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Дүн (₮)</label>
+            <input type="number" min="0" placeholder="150000"
+              value={form.amount}
+              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-900 transition" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Төлбөрийн хэлбэр</label>
+            <select value={form.payment_type}
+              onChange={e => setForm(f => ({ ...f, payment_type: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-900 transition bg-white">
+              {PAYMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Гүйлгээний дугаар</label>
+            <input type="text" placeholder="QPAY-001"
+              value={form.bank_receipt}
+              onChange={e => setForm(f => ({ ...f, bank_receipt: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-900 transition" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Огноо</label>
+            <input type="date" value={form.payment_date}
+              onChange={e => setForm(f => ({ ...f, payment_date: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-900 transition" />
+          </div>
+          <div className="flex items-end">
+            <button type="submit" disabled={saving || loading}
+              className="w-full bg-indigo-900 hover:bg-indigo-950 text-white text-sm font-semibold py-2.5 rounded-xl transition disabled:opacity-60">
+              {saving ? 'Илгээж байна...' : 'Хүсэлт илгээх'}
+            </button>
+          </div>
+          {saveErr && <p className="lg:col-span-5 text-xs text-red-500">{saveErr}</p>}
+        </form>
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-900">Төлбөрийн түүх</h3>
@@ -203,6 +302,7 @@ export default function PaymentsPage() {
             </div>
             {payments.map(p => {
               const dt = p.payment_date ? new Date(p.payment_date).toLocaleDateString('mn-MN') : '—';
+              const receiptUrl = getReceiptUrl(p);
               return (
                 <div key={p.id}
                   className="grid px-6 py-4 border-b border-gray-50 items-center hover:bg-slate-50 transition"
@@ -210,8 +310,20 @@ export default function PaymentsPage() {
                   <span className="text-sm font-semibold text-gray-900">{fmt(p.amount)}</span>
                   <span className="text-sm text-gray-500">{dt}</span>
                   <span className="text-sm text-gray-500">{getPaymentType(p)}</span>
-                  <span className="text-sm text-gray-500 truncate">{p.bank_receipt || '—'}</span>
-                  <StatusBadge item={p} />
+                  <span className="min-w-0 text-sm text-gray-500">
+                    <span className="block truncate">{p.bank_receipt || '—'}</span>
+                    {receiptUrl && (
+                      <a href={receiptUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-xs font-semibold text-indigo-900 hover:underline">
+                        Зураг харах
+                      </a>
+                    )}
+                  </span>
+                  <span>
+                    <StatusBadge item={p} />
+                    {p.status === 'rejected' && p.rejected_reason && (
+                      <span className="mt-1 block text-xs text-red-500">{p.rejected_reason}</span>
+                    )}
+                  </span>
                 </div>
               );
             })}

@@ -22,6 +22,24 @@ const paymentSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    receipt_image_url: {
+      type: String,
+      default: '',
+    },
+    receipt_file_name: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    receipt_file_type: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    receipt_uploaded_on: {
+      type: Date,
+      default: null,
+    },
     payment_date: {
       type: Date,
       default: Date.now,
@@ -38,7 +56,7 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'verified', 'cancelled'],
+      enum: ['pending', 'verified', 'rejected', 'cancelled'],
       default: 'pending',
     },
     course_count: {
@@ -70,6 +88,20 @@ const paymentSchema = new mongoose.Schema(
     verified_on: {
       type: Date,
       default: null,
+    },
+    rejected_by: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    rejected_on: {
+      type: Date,
+      default: null,
+    },
+    rejected_reason: {
+      type: String,
+      default: '',
+      trim: true,
     },
   },
   {

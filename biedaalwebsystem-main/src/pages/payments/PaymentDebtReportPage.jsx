@@ -26,7 +26,11 @@ function getReportDebtAmount(item) {
 }
 
 function isPaymentVerified(payment) {
-  return Boolean(payment?.verified_on || payment?.verified_by);
+  return payment?.status === 'verified' || Boolean(payment?.verified_on || payment?.verified_by);
+}
+
+function isPaymentPending(payment) {
+  return payment?.status !== 'rejected' && payment?.status !== 'cancelled' && !isPaymentVerified(payment);
 }
 
 function getUserId(item) {
@@ -51,7 +55,7 @@ function mergePendingPayments(reportItems, users, paymentsByUser) {
   const byUser = new Map(reportItems.map((item) => [String(item.user_id ?? item.id ?? ''), { ...item }]).filter(([id]) => id));
 
   paymentsByUser.forEach((payments, userId) => {
-    const pendingPayments = payments.filter((payment) => !isPaymentVerified(payment));
+    const pendingPayments = payments.filter(isPaymentPending);
     if (!pendingPayments.length) return;
 
     const pendingAmount = pendingPayments.reduce((sum, payment) => sum + (Number(payment?.amount) || 0), 0);

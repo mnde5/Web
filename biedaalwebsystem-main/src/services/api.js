@@ -542,6 +542,7 @@ export const paymentAPI = {
   getByStudent:  (schoolId, userId)        => localRequest('GET',  `/schools/${schoolId}/users/${userId}/payments`),
   create:        (schoolId, userId, data)  => localRequest('POST', `/schools/${schoolId}/users/${userId}/payments`, withCurrentUser(data)),
   verify:        (schoolId, userId, payId) => localRequest('POST', `/schools/${schoolId}/users/${userId}/payments/${payId}/verify`, withCurrentUser()),
+  reject:        (schoolId, userId, payId, data = {}) => localRequest('POST', `/schools/${schoolId}/users/${userId}/payments/${payId}/reject`, withCurrentUser(data)),
   getDebtReport: (schoolId)                => localRequest('GET',  `/schools/${schoolId}/payment-debt-report`),
 };
 
@@ -609,20 +610,26 @@ export const gradebookAPI = {
 };
 
 export const examAPI = {
-  getAll:         ()                        => api.get('/exams'),
-  getOne:         (examId)                  => api.get(`/exams/${examId}`),
-  getByCourse:    (courseId)                => api.get(`/courses/${courseId}/exams`),
-  getBySchool:    (schoolId)                => api.get(`/schools/${schoolId}/exams`),
-  create:         (courseId, data)          => api.post(`/courses/${courseId}/exams`, withCurrentUser(data)),
-  update:         (examId, data)            => api.put(`/exams/${examId}`, withCurrentUser(data)),
-  delete:         (examId)                  => api.delete(`/exams/${examId}`),
-  getUsers:       (examId)                  => api.get(`/exams/${examId}/users`),
-  getVariants:    (examId)                  => api.get(`/exams/${examId}/variants`),
-  createVariant:  (examId, data)            => api.post(`/exams/${examId}/variants`, withCurrentUser(data)),
-  getQuestions:   (examId)                  => api.get(`/exams/${examId}/questions`),
-  addQuestion:    (examId, data)            => api.post(`/exams/${examId}/questions`, data),
-  updateQuestion: (examId, qId, data)       => api.put(`/exams/${examId}/questions/${qId}`, data),
-  deleteQuestion: (examId, qId)             => api.delete(`/exams/${examId}/questions/${qId}`),
+  getAll:         ()                        => localRequest('GET', '/exams'),
+  getOne:         (examId)                  => localRequest('GET', `/exams/${examId}`),
+  getByCourse:    (courseId)                => localRequest('GET', `/courses/${courseId}/exams`),
+  getBySchool:    (schoolId)                => localRequest('GET', `/schools/${schoolId}/exams`),
+  create:         (courseId, data)          => localRequest('POST', `/courses/${courseId}/exams`, withCurrentUser(data)),
+  update:         (examId, data)            => localRequest('PUT', `/exams/${examId}`, withCurrentUser(data)),
+  delete:         (examId)                  => localRequest('DELETE', `/exams/${examId}`),
+  getUsers:       (examId)                  => localRequest('GET', `/exams/${examId}/users`),
+  getVariants:    (examId)                  => localRequest('GET', `/exams/${examId}/variants`),
+  getVariant:     (examId, id)              => localRequest('GET', `/exams/${examId}/variants/${id}`),
+  createVariant:  (examId, data)            => localRequest('POST', `/exams/${examId}/variants`, withCurrentUser(data)),
+  updateVariant:  (examId, id, data)        => localRequest('PUT', `/exams/${examId}/variants/${id}`, withCurrentUser(data)),
+  getReport:      (examId)                  => localRequest('GET', `/exams/${examId}/report`),
+  getQuestions:   (examId)                  => localRequest('GET', `/exams/${examId}/questions`),
+  addQuestion:    (examId, data)            => localRequest('POST', `/exams/${examId}/questions`, data),
+  updateQuestion: (examId, qId, data)       => localRequest('PUT', `/exams/${examId}/questions/${qId}`, data),
+  deleteQuestion: (examId, qId)             => localRequest('DELETE', `/exams/${examId}/questions/${qId}`),
+  submitAttempt:  (examId, studentId, data) => localRequest('POST', `/exams/${examId}/students/${studentId}/attempts`, data),
+  getLatestAttempt:(examId, studentId)      => localRequest('GET', `/exams/${examId}/students/${studentId}/attempts/latest`),
+  getResult:      (examId, studentId)       => localRequest('GET', `/exams/${examId}/students/${studentId}/result`),
 };
 
 export const variantAPI = {

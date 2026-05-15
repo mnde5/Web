@@ -11,14 +11,33 @@ function fmt(n) {
 }
 
 function StatusBadge({ item }) {
-  const verified = item.verified_on || item.verified_by;
-  if (verified)
+  if (item?.status === 'rejected') {
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">Татгалзсан</span>;
+  }
+  if (item?.status === 'cancelled') {
+    return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Цуцалсан</span>;
+  }
+  const verified = isPaymentVerified(item);
+  if (verified) {
     return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Баталгаажсан</span>;
+  }
   return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">Хүлээлт</span>;
 }
 
 function isPaymentVerified(payment) {
-  return Boolean(payment?.verified_on || payment?.verified_by);
+  return payment?.status === 'verified' || Boolean(payment?.verified_on || payment?.verified_by);
+}
+
+function isPaymentPending(payment) {
+  return payment?.status !== 'rejected' && payment?.status !== 'cancelled' && !isPaymentVerified(payment);
+}
+
+function getPaymentType(payment) {
+  return payment.payment_type_id ?? payment.payment_type ?? payment.requested_payment_method ?? '—';
+}
+
+function getReceiptUrl(payment) {
+  return payment?.receipt_image_url || payment?.receipt_image_data || '';
 }
 
 const PAYMENT_TYPES = [
@@ -56,6 +75,7 @@ export default function UserPaymentsPage() {
   const [saving, setSaving]       = useState(false);
   const [saveErr, setSaveErr]     = useState('');
   const [verifying, setVerifying] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
   const [form, setForm] = useState({
     amount:       '',
     bank_receipt: '',
@@ -165,6 +185,20 @@ export default function UserPaymentsPage() {
     } finally { setVerifying(null); }
   };
 
+  const handleReject = async (payId) => {
+    const reason = window.prompt('Татгалзсан шалтгаанаа бичнэ үү', 'Төлбөрийн мэдээлэл баталгаажихгүй байна');
+    if (!reason) return;
+    setRejecting(payId);
+    try {
+      await paymentAPI.reject(schoolId, user_id, payId, { reason });
+      reload();
+    } catch (e) {
+      alert(getErrorMessage(e, 'Татгалзахад алдаа гарлаа.'));
+    } finally {
+      setRejecting(null);
+    }
+  };
+
   if (!canManagePayments(role)) {
     return <div className="text-center py-24 text-gray-400 text-sm">Эрх байхгүй байна</div>;
   }
@@ -174,7 +208,7 @@ export default function UserPaymentsPage() {
     : 'Оюутан';
 
   const totalPaid    = payments.filter(isPaymentVerified).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const totalPending = payments.filter(p => !isPaymentVerified(p)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const totalPending = payments.filter(isPaymentPending).reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const debtAmount   = Math.max(Number(debt?.debt_amount ?? 0), totalPending);
 
   return (
@@ -239,25 +273,47 @@ export default function UserPaymentsPage() {
               </div>
               {payments.map(p => {
                 const dt = p.payment_date ? new Date(p.payment_date).toLocaleDateString('mn-MN') : '—';
-                const isVerified = p.verified_on || p.verified_by;
+                const isVerified = isPaymentVerified(p);
+                const isPending = isPaymentPending(p);
+                const receiptUrl = getReceiptUrl(p);
                 return (
                   <div key={p.id}
                     className="grid px-6 py-4 border-b border-gray-50 items-center hover:bg-slate-50 transition"
                     style={{ gridTemplateColumns: '1.5fr 1.5fr 1.5fr 1.5fr 1.5fr 1fr' }}>
                     <span className="text-sm font-semibold text-gray-900">{fmt(p.amount)}</span>
                     <span className="text-sm text-gray-500">{dt}</span>
-                    <span className="text-sm text-gray-500">{p.payment_type_id ?? '—'}</span>
-                    <span className="text-sm text-gray-500 truncate">{p.bank_receipt || '—'}</span>
-                    <StatusBadge item={p} />
-                    {!isVerified ? (
-                      <button
-                        onClick={() => handleVerify(p.id)}
-                        disabled={verifying === p.id}
-                        className="text-xs text-indigo-900 font-semibold hover:underline disabled:opacity-50 text-right">
-                        {verifying === p.id ? '...' : 'Баталгаажуулах'}
-                      </button>
+                    <span className="text-sm text-gray-500">{getPaymentType(p)}</span>
+                    <span className="min-w-0 text-sm text-gray-500">
+                      <span className="block truncate">{p.bank_receipt || '—'}</span>
+                      {receiptUrl && (
+                        <a href={receiptUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-xs font-semibold text-indigo-900 hover:underline">
+                          Зураг харах
+                        </a>
+                      )}
+                    </span>
+                    <span>
+                      <StatusBadge item={p} />
+                      {p.status === 'rejected' && p.rejected_reason && (
+                        <span className="mt-1 block text-xs text-red-500">{p.rejected_reason}</span>
+                      )}
+                    </span>
+                    {isPending ? (
+                      <span className="flex flex-col items-end gap-2">
+                        <button
+                          onClick={() => handleVerify(p.id)}
+                          disabled={verifying === p.id || rejecting === p.id}
+                          className="text-xs text-indigo-900 font-semibold hover:underline disabled:opacity-50 text-right">
+                          {verifying === p.id ? '...' : 'Баталгаажуулах'}
+                        </button>
+                        <button
+                          onClick={() => handleReject(p.id)}
+                          disabled={verifying === p.id || rejecting === p.id}
+                          className="text-xs text-red-600 font-semibold hover:underline disabled:opacity-50 text-right">
+                          {rejecting === p.id ? '...' : 'Татгалзах'}
+                        </button>
+                      </span>
                     ) : (
-                      <span className="text-xs text-gray-300 text-right">✓</span>
+                      <span className="text-xs text-gray-300 text-right">{isVerified ? '✓' : '—'}</span>
                     )}
                   </div>
                 );

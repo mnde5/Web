@@ -48,6 +48,15 @@ import PaymentsPage           from './pages/payments/PaymentsPage';
 import UserPaymentsPage       from './pages/payments/UserPaymentsPage';
 import PaymentDebtReportPage  from './pages/payments/PaymentDebtReportPage';
 import PaymentPolicyPage      from './pages/payments/PaymentPolicyPage';
+import ExamListPage           from './pages/exams/ExamListPage';
+import ExamCreatePage         from './pages/exams/ExamCreatePage';
+import ExamDetailPage         from './pages/exams/ExamDetailPage';
+import ExamTakePage           from './pages/exams/ExamTakePage';
+import ExamResultPage         from './pages/exams/ExamResultPage';
+import ExamReportPage         from './pages/exams/ExamReportPage';
+import ExamVariantListPage    from './pages/exams/ExamVariantListPage';
+import ExamVariantFormPage    from './pages/exams/ExamVariantFormPage';
+import ExamVariantDetailPage  from './pages/exams/ExamVariantDetailPage';
 
 export default function Team2() {
   const staffOnly = (element, title, summary) => (
@@ -225,20 +234,20 @@ export default function Team2() {
         <Route path="courses/:course_id/questions/:question_id/edit" element={staffOnly(<RouteStubPage title="Асуулт засах" summary="Question edit route scaffold." />, 'Асуулт засах эрхгүй')} />
         <Route path="courses/:course_id/questions/report" element={staffOnly(<RouteStubPage title="Асуултын тайлан" summary="Question report/statistics route scaffold." />, 'Асуултын тайлан харах эрхгүй')} />
 
-        <Route path="courses/:course_id/exams" element={staffOnly(<RouteStubPage title="Шалгалтууд" summary="Exam list route scaffold." />, 'Шалгалтын жагсаалт харах эрхгүй')} />
-        <Route path="courses/:course_id/exams/create" element={staffOnly(<RouteStubPage title="Шалгалт үүсгэх" summary="Exam create route scaffold." />, 'Шалгалт үүсгэх эрхгүй')} />
-        <Route path="exams" element={staffOnly(<RouteStubPage title="Шалгалтын жагсаалт" summary="Global exam list route scaffold." />, 'Шалгалтын жагсаалт руу хандах эрхгүй')} />
-        <Route path="exams/:exam_id" element={staffOnly(<RouteStubPage title="Шалгалтын дэлгэрэнгүй" summary="Exam detail route scaffold." />, 'Шалгалтын мэдээлэл харах эрхгүй')} />
-        <Route path="exams/:exam_id/edit" element={staffOnly(<RouteStubPage title="Шалгалт засах" summary="Exam edit route scaffold." />, 'Шалгалт засах эрхгүй')} />
-        <Route path="exams/:exam_id/report" element={staffOnly(<RouteStubPage title="Шалгалтын тайлан" summary="Exam report/statistics route scaffold." />, 'Шалгалтын тайлан харах эрхгүй')} />
-        <Route path="exams/:exam_id/variants" element={staffOnly(<RouteStubPage title="Шалгалтын вариант" summary="Exam variants list route scaffold." />, 'Шалгалтын вариант харах эрхгүй')} />
-        <Route path="exams/:exam_id/variants/create" element={staffOnly(<RouteStubPage title="Вариант нэмэх" summary="Exam variant create route scaffold." />, 'Вариант нэмэх эрхгүй')} />
-        <Route path="exams/:exam_id/variants/:id" element={staffOnly(<RouteStubPage title="Вариант харах" summary="Exam variant detail route scaffold." />, 'Вариант харах эрхгүй')} />
-        <Route path="exams/:exam_id/variants/:id/edit" element={staffOnly(<RouteStubPage title="Вариант засах" summary="Exam variant edit route scaffold." />, 'Вариант засах эрхгүй')} />
-        <Route path="exams/:exam_id/students/:student_id" element={<RouteStubPage title="Шалгалт өгөх" summary="Student exam attempt route scaffold." />} />
-        <Route path="exams/:exam_id/students/:student_id/edit" element={<RouteStubPage title="Шалгалт үргэлжлүүлэх" summary="Exam attempt edit route scaffold." />} />
-        <Route path="exams/:exam_id/students/:student_id/check" element={<RouteStubPage title="Зөв хариулт харах" summary="Exam answer-check route scaffold." />} />
-        <Route path="exams/:exam_id/students/:student_id/result" element={<RouteStubPage title="Шалгалтын үр дүн" summary="Exam result route scaffold." />} />
+        <Route path="courses/:course_id/exams" element={<ExamListPage />} />
+        <Route path="courses/:course_id/exams/create" element={staffOnly(<ExamCreatePage />, 'Шалгалт үүсгэх эрхгүй')} />
+        <Route path="exams" element={staffOnly(<ExamListPage />, 'Шалгалтын жагсаалт руу хандах эрхгүй')} />
+        <Route path="exams/:exam_id" element={staffOnly(<ExamDetailPage />, 'Шалгалтын мэдээлэл харах эрхгүй')} />
+        <Route path="exams/:exam_id/edit" element={staffOnly(<ExamCreatePage />, 'Шалгалт засах эрхгүй')} />
+        <Route path="exams/:exam_id/report" element={staffOnly(<ExamReportPage />, 'Шалгалтын тайлан харах эрхгүй')} />
+        <Route path="exams/:exam_id/variants" element={staffOnly(<ExamVariantListPage />, 'Шалгалтын вариант харах эрхгүй')} />
+        <Route path="exams/:exam_id/variants/create" element={staffOnly(<ExamVariantFormPage />, 'Вариант нэмэх эрхгүй')} />
+        <Route path="exams/:exam_id/variants/:id" element={staffOnly(<ExamVariantDetailPage />, 'Вариант харах эрхгүй')} />
+        <Route path="exams/:exam_id/variants/:id/edit" element={staffOnly(<ExamVariantFormPage />, 'Вариант засах эрхгүй')} />
+        <Route path="exams/:exam_id/students/:student_id" element={<ExamTakePage />} />
+        <Route path="exams/:exam_id/students/:student_id/edit" element={<ExamTakePage />} />
+        <Route path="exams/:exam_id/students/:student_id/check" element={<ExamResultPage />} />
+        <Route path="exams/:exam_id/students/:student_id/result" element={<ExamResultPage />} />
 
         {/* Payments */}
         <Route path="payments"                element={<PaymentsPage />} />

@@ -40,6 +40,10 @@ class MockPaymentInstance {
       bank_receipt: '',
       payment_type: 'bank_transfer',
       requested_payment_method: '',
+      receipt_image_url: '',
+      receipt_file_name: '',
+      receipt_file_type: '',
+      receipt_uploaded_on: null,
       status: 'pending',
       course_count: 0,
       credits: 0,
@@ -48,6 +52,9 @@ class MockPaymentInstance {
       created_by: '',
       verified_by: '',
       verified_on: null,
+      rejected_by: '',
+      rejected_on: null,
+      rejected_reason: '',
       createdAt: new Date(),
       updatedAt: new Date(),
       ...data,
@@ -158,6 +165,34 @@ describe('Payments API - Integration Tests', () => {
 
     const debtRes = await request(app).get(`${BASE}/schools/school-1/users/student-1/debt`);
 
+    expect(debtRes.body.debt_amount).toBe(0);
+  });
+
+  test('Баримтын зурагтай payment үүсгээд reject хийхэд шалтгаан хадгалагдана', async () => {
+    const createRes = await request(app)
+      .post(`${BASE}/schools/school-1/users/student-1/payments`)
+      .send({
+        amount: 80000,
+        bank_receipt: 'IMG-001',
+        receipt_image_url: 'data:image/png;base64,ZmFrZQ==',
+        receipt_file_name: 'receipt.png',
+        receipt_file_type: 'image/png',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.item.receipt_image_url).toContain('data:image/png');
+    expect(createRes.body.item.receipt_file_name).toBe('receipt.png');
+
+    const rejectRes = await request(app)
+      .post(`${BASE}/schools/school-1/users/student-1/payments/${createRes.body.item._id}/reject`)
+      .send({ current_user: 'admin-1', reason: 'Баримтын зураг тод биш байна' });
+
+    expect(rejectRes.status).toBe(200);
+    expect(rejectRes.body.item.status).toBe('rejected');
+    expect(rejectRes.body.item.rejected_by).toBe('admin-1');
+    expect(rejectRes.body.item.rejected_reason).toBe('Баримтын зураг тод биш байна');
+
+    const debtRes = await request(app).get(`${BASE}/schools/school-1/users/student-1/debt`);
     expect(debtRes.body.debt_amount).toBe(0);
   });
 

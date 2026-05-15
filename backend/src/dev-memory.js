@@ -21,6 +21,7 @@ async function start() {
       console.log(`Server running: http://localhost:${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
       console.log(`Submissions API: http://localhost:${PORT}/bs/lms/v1/lessons/:lessonId/submissions`);
+      console.log(`Exams API: http://localhost:${PORT}/bs/lms/v1/courses/:courseId/exams`);
     });
   } catch (err) {
     console.error('Failed to start memory backend:', err.message);

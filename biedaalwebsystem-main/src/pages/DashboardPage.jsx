@@ -422,11 +422,13 @@ export default function DashboardPage() {
 
   const quickActions = isStaff
     ? [
+        { to: courses[0]?.id ? `/courses/${courses[0].id}/exams/create` : '/courses', label: 'Шалгалт үүсгэх', note: courses[0]?.id ? `${courses[0].name} дээр шинэ шалгалт` : 'Эхлээд хичээл сонгоно', icon: <CheckIcon />, tone: 'emerald' },
         { to: '/grade', label: 'Дүн оруулах', note: `${stats.pending} submission шалгана`, icon: <GradeIcon />, tone: 'blue' },
         { to: '/attendance', label: 'Ирц', note: `${summaryCounts.approvals} хүсэлт хүлээгдэж байна`, icon: <ClockIcon />, tone: 'amber' },
         { to: '/courses', label: 'Хичээлүүд', note: `${courses.length} course идэвхтэй`, icon: <BookIcon />, tone: 'emerald' },
       ]
     : [
+        { to: courses[0]?.id ? `/courses/${courses[0].id}/exams` : '/courses', label: 'Шалгалт өгөх', note: courses[0]?.id ? `${courses[0].name} шалгалтууд` : 'Эхлээд хичээл сонгоно', icon: <CheckIcon />, tone: 'emerald' },
         { to: '/submissions/create', label: 'Илгээлт', note: `${stats.pending} ажил хүлээгдэж байна`, icon: <SendIcon />, tone: 'blue' },
         { to: '/grade', label: 'Миний дүн', note: `${gradeEntries.length} явцын дүн`, icon: <GradeIcon />, tone: 'violet' },
         { to: '/attendance', label: 'Ирц', note: `${attendancePct}% оролцоо`, icon: <CheckIcon />, tone: 'emerald' },

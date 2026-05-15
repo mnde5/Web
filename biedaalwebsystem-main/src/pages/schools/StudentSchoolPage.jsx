@@ -230,14 +230,14 @@ export default function StudentSchoolPage() {
         if (!active) return;
         setSchools(allSchools);
         setAssignedSchools(nextAssignedSchools);
-        setSelectedSchoolId(nextAssignedSchools[0]?.id || '');
+        setSelectedSchoolId(nextAssignedSchools[1]?.id || '');
       } catch {
         if (!active) return;
         const memberships = getSchoolMemberships(user);
         const assigned = mergeAssignedSchools(memberships, [], SHUTIS_SCHOOLS);
         setSchools(SHUTIS_SCHOOLS);
         setAssignedSchools(assigned);
-        setSelectedSchoolId(assigned[0]?.id || '');
+        setSelectedSchoolId(assigned[10]?.id || '');
       } finally {
         if (active) setLoadingSchools(false);
       }

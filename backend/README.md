@@ -54,10 +54,24 @@ npm run start:memory
 | PUT | `/bs/lms/v1/submissions/:id` | Даалгавар засах, оноо тавих |
 | DELETE | `/bs/lms/v1/submissions/:id` | Даалгавар устгах |
 | GET | `/bs/lms/v1/schools/:schoolId/users/:userId/payments` | Оюутны төлбөрийн түүх авах |
-| POST | `/bs/lms/v1/schools/:schoolId/users/:userId/payments` | Төлбөрийн хүсэлт үүсгэх |
+| POST | `/bs/lms/v1/schools/:schoolId/users/:userId/payments` | Төлбөрийн хүсэлт үүсгэх, баримтын зураг хадгалах |
 | POST | `/bs/lms/v1/schools/:schoolId/users/:userId/payments/:payId/verify` | Админ төлбөр баталгаажуулах |
+| POST | `/bs/lms/v1/schools/:schoolId/users/:userId/payments/:payId/reject` | Админ төлбөр татгалзах, шалтгаан хадгалах |
 | GET | `/bs/lms/v1/schools/:schoolId/users/:userId/debt` | Оюутны өрийн дүн авах |
 | GET | `/bs/lms/v1/schools/:schoolId/payment-debt-report` | Төлбөрийн өрийн тайлан авах |
+| GET | `/bs/lms/v1/exams` | Шалгалтын жагсаалт авах |
+| GET | `/bs/lms/v1/courses/:courseId/exams` | Хичээлийн шалгалтууд авах |
+| POST | `/bs/lms/v1/courses/:courseId/exams` | Багш шалгалт, асуулт үүсгэх |
+| GET | `/bs/lms/v1/exams/:examId` | Шалгалтын дэлгэрэнгүй авах |
+| PUT | `/bs/lms/v1/exams/:examId` | Шалгалтын мэдээлэл засах |
+| GET | `/bs/lms/v1/exams/:examId/report` | Шалгалтын тайлан, статистик авах |
+| GET | `/bs/lms/v1/exams/:examId/variants` | Шалгалтын вариантын жагсаалт авах |
+| POST | `/bs/lms/v1/exams/:examId/variants` | Шалгалтын вариант нэмэх |
+| GET | `/bs/lms/v1/exams/:examId/variants/:id` | Шалгалтын вариант харах |
+| PUT | `/bs/lms/v1/exams/:examId/variants/:id` | Шалгалтын вариант засах |
+| GET | `/bs/lms/v1/exams/:examId/questions` | Шалгалтын асуултууд авах |
+| POST | `/bs/lms/v1/exams/:examId/students/:studentId/attempts` | Сурагч хариу илгээж, оноо бодуулах |
+| GET | `/bs/lms/v1/exams/:examId/students/:studentId/result` | Сурагчийн шалгалтын үр дүн авах |
 
 ## Payment body жишээ
 
@@ -70,7 +84,10 @@ npm run start:memory
   "status": "pending",
   "course_count": 1,
   "credits": 3,
-  "course_ids": ["course-101"]
+  "course_ids": ["course-101"],
+  "receipt_image_url": "data:image/png;base64,...",
+  "receipt_file_name": "receipt.png",
+  "receipt_file_type": "image/png"
 }
 ```
 
@@ -91,12 +108,18 @@ backend/
 │   ├── index.js
 │   ├── dev-memory.js
 │   ├── models/
+│   │   ├── Exam.js
+│   │   ├── ExamAttempt.js
+│   │   ├── ExamQuestion.js
+│   │   ├── ExamVariant.js
 │   │   ├── Payment.js
 │   │   └── Submission.js
 │   ├── routes/
+│   │   ├── exams.js
 │   │   ├── payments.js
 │   │   └── submissions.js
 │   └── tests/
+│       ├── integration.exams.api.test.js
 │       ├── integration.payments.api.test.js
 │       ├── integration.submissions.api.test.js
 │       └── unit.submission.model.test.js
